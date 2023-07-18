@@ -1,16 +1,10 @@
-from channels.routing import ProtocolTypeRouter, URLRouter
-from django.urls import path
-from Blog import consumers  # replace "your_app" with your app name
+from django.urls import re_path
 
-application = ProtocolTypeRouter(
-    {
-        "websocket": URLRouter(
-            [
-                path(
-                    "ws/posts/<int:post_id>/comments/",
-                    consumers.CommentConsumer.as_asgi(),
-                ),
-            ]
-        ),
-    }
-)
+
+from Blog import consumers
+
+websocket_urlpatterns = [
+    re_path(
+        r"ws/posts/(?P<post_id>\d+)/comments/$", consumers.CommentConsumer.as_asgi()
+    ),
+]

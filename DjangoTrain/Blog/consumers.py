@@ -1,22 +1,34 @@
-from djangochannelsrestframework.generics import GenericAsyncAPIConsumer
-from djangochannelsrestframework.mixins import ListModelMixin
-from .models import Comment
-from .serializers import CommentSerializer
+from channels.generic.websocket import AsyncWebsocketConsumer
+import json
 
 
-class CommentConsumer(ListModelMixin, GenericAsyncAPIConsumer):
-    queryset = Comment.objects.all()
-    serializer_class = CommentSerializer
+class CommentConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.post_id = self.scope["url_route"]["kwargs"]["post_id"]
+        self.group_name = f"post_{self.post_id}"
 
-    async def post(self, comment, **kwargs):
-        serializer = self.get_serializer(data=comment)
-        serializer.is_valid(raise_exception=True)
-        instance = await self.perform_create(serializer)
-        data = CommentSerializer(instance).data
-        await self.send_json(data)
-        return data, 201
+        # Join group
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
 
-    def get_queryset(self, **kwargs):
-        return Comment.objects.filter(
-            post__id=self.scope["url_route"]["kwargs"]["post_id"]
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        # Leave group
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+
+    # Receive message from WebSocket
+    async def receive(self, text_data):
+        text_data_json = json.loads(text_data)
+        message = text_data_json["message"]
+
+        # Send message to group
+        await self.channel_layer.group_send(
+            self.group_name, {"type": "chat_message", "message": message}
         )
+
+    # Receive message from group
+    async def chat_message(self, event):
+        message = event["message"]
+
+        # Send message to WebSocket
+        await self.send(text_data=json.dumps({"message": message}))
