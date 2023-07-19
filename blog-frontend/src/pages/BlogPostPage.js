@@ -5,6 +5,7 @@ import BlogPost from "../components/BlogPost";
 import CommentForm from "../components/CommentForm";
 import Comment from "../components/Comment";
 import AuthContext from "../utils/AuthContext";
+import commentTreeReducer from "../shared/commentReducer";
 
 const useStyles = makeStyles(() => ({
   container: {
@@ -15,25 +16,15 @@ const useStyles = makeStyles(() => ({
   },
 }));
 
-const commentReducer = (state, action) => {
-  if (action.comment.length === 0) return state;
-  if (action.type === "added") {
-    if (action.comment.id in state) return state;
-    return { ...state, [action.comment.id]: action.comment };
-  } else if (action.type === "updated") {
-    return { ...state, [action.comment.id]: action.comment };
-  } else if (action.type === "deleted") {
-    const newState = { ...state };
-    delete newState[action.comment.id];
-    return newState;
-  }
-  return state;
-};
-
 const BlogPostPage = () => {
   const { id } = useParams();
   const [post, setPost] = useState(null);
-  const [comments, reduceComments] = useReducer(commentReducer, {});
+  const [comments, dispatchComments] = useReducer(commentTreeReducer, {
+    commentMap: {},
+    commentTree: [],
+  });
+  const { commentMap, commentTree } = comments;
+
   const classes = useStyles();
   const isAuthenticated = useContext(AuthContext);
 
@@ -65,7 +56,10 @@ const BlogPostPage = () => {
         }
         const comments = await response.json();
         for (const comment of comments) {
-          reduceComments({ type: "added", comment });
+          dispatchComments({
+            type: "added",
+            comment: { ...comment, replies: [] },
+          });
         }
       } catch (error) {
         console.error(error);
@@ -82,7 +76,7 @@ const BlogPostPage = () => {
 
     socket.onmessage = (event) => {
       const comment = JSON.parse(event.data);
-      reduceComments({ type: "added", comment });
+      dispatchComments({ type: "added", comment: { ...comment, replies: [] } });
     };
 
     return () => {
@@ -91,7 +85,21 @@ const BlogPostPage = () => {
   }, []);
 
   const onCommentSubmit = (comment) => {
-    reduceComments({ type: "added", comment });
+    dispatchComments({ type: "added", comment: { ...comment, replies: [] } });
+  };
+
+  const renderComments = (comments, depth = 0) => {
+    return comments.map((comment, index) => (
+      <div
+        style={
+          depth > 0 ? { marginLeft: `${depth * 20}px` } : { marginLeft: "0px" }
+        }
+        key={comment.id}
+      >
+        <Comment comment={comment} index={index} />
+        {comment.replies && renderComments(comment.replies, depth + 1)}
+      </div>
+    ));
   };
 
   if (!post) return "Loading...";
@@ -101,10 +109,7 @@ const BlogPostPage = () => {
       <h1>{post.title}</h1>
       <BlogPost post={post} />
       <h2>Comments</h2>
-      {comments &&
-        Object.values(comments).map((comment, index) => (
-          <Comment key={comment.id} comment={comment} index={index} />
-        ))}
+      <div>{commentTree && renderComments(commentTree)}</div>
       {isAuthenticated && (
         <CommentForm postId={id} onCommentPosted={onCommentSubmit} />
       )}

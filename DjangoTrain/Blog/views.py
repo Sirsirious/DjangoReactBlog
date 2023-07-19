@@ -57,7 +57,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        post_id = self.kwargs.get("post_id")
+        post_id = self.kwargs.get("post_pk")
         if post_id is not None:
             queryset = queryset.filter(post__id=post_id).order_by("created_at")
         return queryset
@@ -73,7 +73,16 @@ class CommentViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def perform_create(self, serializer):
-        comment = serializer.save(author=self.request.user)
+        creation_data = serializer.validated_data
+        comment = Comment(
+            text=creation_data["text"],
+            post_id=creation_data["post"].id,
+            author=self.request.user,
+            in_reply_to=creation_data.get("in_reply_to"),
+        )
+        comment.full_clean()
+        comment.save()
+        comment.refresh_from_db()
         channel_layer = get_channel_layer()
         data = {
             "type": "new.comment",
