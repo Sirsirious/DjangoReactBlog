@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { TextField, Button, makeStyles } from "@material-ui/core";
 
 const useStyles = makeStyles((theme) => ({
@@ -23,15 +22,21 @@ function RegisterForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios
-      .post("http://localhost:8000/api/users/", {
-        username: username,
-        email: email,
-        password: password,
-      })
+    fetch("http://localhost:8000/api/users/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, email, password }),
+    })
       .then((response) => {
-        console.log(response);
-        // After successful registration, you can redirect the user to login
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error("Failed to register");
+        }
+      })
+      .then((data) => {
+        // After successful registration, you can redirect the user to the login page
+        window.location.href = "/login";
       })
       .catch((error) => {
         console.log(error);
