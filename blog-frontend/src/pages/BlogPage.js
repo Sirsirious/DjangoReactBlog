@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import PostForm from "../components/PostForm";
 import PostsList from "../components/PostsList";
 import { makeStyles } from "@material-ui/core";
-import useAuth from "../utils/useAuth";
 import { useParams } from "react-router-dom";
+import AuthContext from "../utils/AuthContext";
 
 const useStyles = makeStyles(() => ({
   container: {
@@ -19,7 +19,7 @@ const BlogPage = () => {
   const [posts, setPosts] = useState([]);
 
   const classes = useStyles();
-  const isAuthenticated = useAuth();
+  const isAuthenticated = useContext(AuthContext);
 
   useEffect(() => {
     fetch(`http://localhost:8000/api/posts/user/${userId}/`, {

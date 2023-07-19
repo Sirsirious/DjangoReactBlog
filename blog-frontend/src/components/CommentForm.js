@@ -8,13 +8,13 @@ function CommentForm({ postId, onCommentPosted }) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    fetch("http://localhost:8000/api/comments/", {
+    fetch(`http://localhost:8000/api/posts/${postId}/comments/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ content, post: postId }),
+      body: JSON.stringify({ text: content, post: postId }),
     })
       .then((response) => {
         if (!response.ok) throw new Error(response.status);

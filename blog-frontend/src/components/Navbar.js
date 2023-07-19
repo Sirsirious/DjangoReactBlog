@@ -1,19 +1,19 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { AppBar, Toolbar, Typography, Button } from "@material-ui/core";
+import AuthContext from "../utils/AuthContext";
 
 const NavBar = () => {
-  const isLoggedIn = !!localStorage.getItem("access_token");
+  const isAuthenticated = useContext(AuthContext);
   const handleLogout = () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
-    // Here you may want to add a redirection to the login page, like so:
     window.location.href = "/login";
   };
   return (
     <AppBar position="static">
       <Toolbar>
-        {isLoggedIn ? (
+        {isAuthenticated ? (
           <>
             <Typography variant="h6" style={{ flexGrow: 1 }}>
               My Blog

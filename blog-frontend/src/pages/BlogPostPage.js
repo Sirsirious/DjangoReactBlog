@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useReducer, useContext } from "react";
 import { makeStyles } from "@material-ui/core";
-import useAuth from "../utils/useAuth";
 import { useParams } from "react-router-dom";
 import BlogPost from "../components/BlogPost";
 import CommentForm from "../components/CommentForm";
+import Comment from "../components/Comment";
+import AuthContext from "../utils/AuthContext";
 
 const useStyles = makeStyles(() => ({
   container: {
@@ -14,12 +15,27 @@ const useStyles = makeStyles(() => ({
   },
 }));
 
+const commentReducer = (state, action) => {
+  if (action.comment.length === 0) return state;
+  if (action.type === "added") {
+    if (action.comment.id in state) return state;
+    return { ...state, [action.comment.id]: action.comment };
+  } else if (action.type === "updated") {
+    return { ...state, [action.comment.id]: action.comment };
+  } else if (action.type === "deleted") {
+    const newState = { ...state };
+    delete newState[action.comment.id];
+    return newState;
+  }
+  return state;
+};
+
 const BlogPostPage = () => {
   const { id } = useParams();
   const [post, setPost] = useState(null);
-  const [comments, setComments] = useState([]);
+  const [comments, reduceComments] = useReducer(commentReducer, {});
   const classes = useStyles();
-  const isAuthenticated = useAuth();
+  const isAuthenticated = useContext(AuthContext);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -38,24 +54,26 @@ const BlogPostPage = () => {
     fetchPost();
   }, [id]);
 
-  // useEffect(() => {
-  //   const fetchComments = async () => {
-  //     try {
-  //       const response = await fetch(
-  //         `http://localhost:8000/api/posts/${id}/comments/`,
-  //       );
-  //       if (!response.ok) {
-  //         throw new Error("Failed to fetch comments.");
-  //       }
-  //       const data = await response.json();
-  //       setComments(data);
-  //     } catch (error) {
-  //       console.error(error);
-  //     }
-  //   };
-  //
-  //   fetchComments();
-  // }, [id]);
+  useEffect(() => {
+    const fetchComments = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8000/api/posts/${id}/comments/`,
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch comments.");
+        }
+        const comments = await response.json();
+        for (const comment of comments) {
+          reduceComments({ type: "added", comment });
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchComments();
+  }, [id]);
 
   useEffect(() => {
     const socket = new WebSocket(
@@ -63,8 +81,8 @@ const BlogPostPage = () => {
     );
 
     socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setComments((prevComments) => [...prevComments, data]);
+      const comment = JSON.parse(event.data);
+      reduceComments({ type: "added", comment });
     };
 
     return () => {
@@ -73,12 +91,10 @@ const BlogPostPage = () => {
   }, []);
 
   const onCommentSubmit = (comment) => {
-    setComments([...comments, comment]);
+    reduceComments({ type: "added", comment });
   };
 
   if (!post) return "Loading...";
-
-  console.log(post);
 
   return (
     <div className={classes.container}>
@@ -86,13 +102,11 @@ const BlogPostPage = () => {
       <BlogPost post={post} />
       <h2>Comments</h2>
       {comments &&
-        comments.map((comment) => (
-          <p>
-            {comment.content} by {comment.author}
-          </p>
+        Object.values(comments).map((comment, index) => (
+          <Comment key={comment.id} comment={comment} index={index} />
         ))}
       {isAuthenticated && (
-        <CommentForm postId={post.id} onCommentPosted={onCommentSubmit} />
+        <CommentForm postId={id} onCommentPosted={onCommentSubmit} />
       )}
     </div>
   );
