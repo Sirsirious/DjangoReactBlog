@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  web:
+    build: ./DjangoTrain
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./DjangoTrain:/code
+    ports:
+      - 8000:8000
+    depends_on:
+      - redis
+
+  frontend:
+    build: ./blog-frontend
+    command: npm start
+    volumes:
+      - ./blog-frontend:/app
+      - ./blog-frontend/node_modules
+    ports:
+      - 3000:3003
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+
+  redis:
+    image: redis:7.0.1
+    ports:
+      - 6379:6379
