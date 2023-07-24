@@ -28,7 +28,6 @@ class CommentConsumer(AsyncWebsocketConsumer):
 
     # Receive message from group
     async def new_comment(self, event):
-        print(event)
         event_type = event["type"]
         if event_type == "new.comment":
             comment = event["payload"]["comment"]

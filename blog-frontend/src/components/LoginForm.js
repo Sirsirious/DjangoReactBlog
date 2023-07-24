@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { TextField, Button, makeStyles } from "@material-ui/core";
 
 const useStyles = makeStyles((theme) => ({
@@ -23,14 +22,21 @@ function LoginForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios
-      .post("http://localhost:8000/api/token/", {
-        username: username,
-        password: password,
-      })
+    fetch("http://localhost:8000/api/token/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    })
       .then((response) => {
-        localStorage.setItem("access_token", response.data.access);
-        localStorage.setItem("refresh_token", response.data.refresh);
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error("Failed to login");
+        }
+      })
+      .then((data) => {
+        localStorage.setItem("access_token", data.access);
+        localStorage.setItem("refresh_token", data.refresh);
         // After successful login, you can redirect the user to their dashboard or homepage.
         window.location.href = "/";
       })
